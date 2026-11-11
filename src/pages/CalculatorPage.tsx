@@ -8,20 +8,13 @@ import {
   pricePrint,
   saveWorkshop,
   type ChannelFee,
-  type PaintLevel,
-  type PaintTier,
   type PieceInput,
   type WorkshopConfig,
 } from "../lib/priceCalc";
 
 const AUTH_KEY = "3dxap-admin-auth";
 
-const PAINTS: { id: PaintLevel; label: string }[] = [
-  { id: "none", label: "Sem pintura" },
-  { id: "simple", label: "Simples" },
-  { id: "medium", label: "Média" },
-  { id: "complex", label: "Complexa" },
-];
+const fieldGrid = "grid grid-cols-2 items-end gap-x-2.5 gap-y-3 md:grid-cols-4";
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-rosa/15 bg-cream px-3 py-2 text-[15px] font-normal text-ink outline-none focus:border-rosa";
@@ -49,21 +42,10 @@ export function CalculatorPage() {
     setSaved(false);
   }
 
-  function patchTier(level: "simple" | "medium" | "complex", patch: Partial<PaintTier>) {
+  function patchMercadoPago(patch: Partial<ChannelFee>) {
     setWorkshop((prev) => ({
       ...prev,
-      paint: { ...prev.paint, [level]: { ...prev.paint[level], ...patch } },
-    }));
-    setSaved(false);
-  }
-
-  function patchChannel(channel: keyof WorkshopConfig["channels"], patch: Partial<ChannelFee>) {
-    setWorkshop((prev) => ({
-      ...prev,
-      channels: {
-        ...prev.channels,
-        [channel]: { ...prev.channels[channel], ...patch },
-      },
+      mercadoPago: { ...prev.mercadoPago, ...patch },
     }));
     setSaved(false);
   }
@@ -121,8 +103,8 @@ export function CalculatorPage() {
         <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_1fr]">
           <section className="order-2 rounded-3xl border border-rosa/10 bg-white p-5 shadow-sm lg:order-1">
             <h2 className="mb-2.5 font-display text-[22px] font-semibold text-ink">A peça</h2>
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              <label className="block text-xs font-medium text-muted">
+            <div className="grid grid-cols-1 items-end gap-2.5 sm:grid-cols-2">
+              <label className="flex flex-col justify-end text-xs font-medium leading-4 text-muted">
                 Nome da peça
                 <input
                   value={piece.name}
@@ -131,7 +113,7 @@ export function CalculatorPage() {
                   className={inputClass}
                 />
               </label>
-              <label className="block text-xs font-medium text-muted">
+              <label className="flex flex-col justify-end text-xs font-medium leading-4 text-muted">
                 Tipo de impressão
                 <select
                   value={piece.process}
@@ -143,29 +125,11 @@ export function CalculatorPage() {
                 </select>
               </label>
             </div>
-            <div className="mt-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+            <div className={`mt-2.5 ${fieldGrid}`}>
               <NumField label="Tempo no fatiador (h)" value={piece.hours} step="0.1" onChange={(value) => patchPiece("hours", value)} />
               <NumField label="Peso (g)" value={piece.grams} step="1" onChange={(value) => patchPiece("grams", value)} />
               <NumField label="Quantidade" value={piece.quantity} step="1" onChange={(value) => patchPiece("quantity", value)} />
               <NumField label="Markup (×)" value={piece.markup} step="0.1" onChange={(value) => patchPiece("markup", value)} />
-            </div>
-
-            <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Pintura</p>
-            <div className="flex flex-wrap gap-1.5">
-              {PAINTS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => patchPiece("paint", item.id)}
-                  className={`rounded-full border-[1.5px] px-3.5 py-1.5 text-[13px] font-medium ${
-                    piece.paint === item.id
-                      ? "border-rosa bg-blush text-rosa-deep"
-                      : "border-rosa/20 bg-white text-ink"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
             </div>
 
             <details open className="mt-3 border-t border-dashed border-rosa/20 pt-2.5">
@@ -174,7 +138,7 @@ export function CalculatorPage() {
               </summary>
 
               <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Custos fixos por mês (R$)</p>
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              <div className={fieldGrid}>
                 <NumField label="Aluguel × % usado" value={workshop.rent} onChange={(value) => patchWorkshop({ rent: value })} />
                 <NumField label="Softwares" value={workshop.software} onChange={(value) => patchWorkshop({ software: value })} />
                 <NumField label="Loja / e-commerce" value={workshop.ecommerce} onChange={(value) => patchWorkshop({ ecommerce: value })} />
@@ -203,7 +167,7 @@ export function CalculatorPage() {
               ) : null}
 
               <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Impressoras (amortização)</p>
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              <div className={fieldGrid}>
                 <NumField
                   label="Valor pago (R$)"
                   value={workshop.printerPaid}
@@ -233,7 +197,7 @@ export function CalculatorPage() {
               ) : null}
 
               <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Material e envio</p>
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              <div className={fieldGrid}>
                 <NumField
                   label="Filamento/resina R$/kg (c/ frete)"
                   value={workshop.materialBrlPerKg}
@@ -257,72 +221,19 @@ export function CalculatorPage() {
               </div>
 
               <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
-                Pintura (tinta R$ · horas) e custo da sua hora
+                Link Mercado Pago / cartão
               </p>
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-                <NumField label="Simples: tinta (R$)" value={workshop.paint.simple.inkBrl} onChange={(value) => patchTier("simple", { inkBrl: value })} />
-                <NumField label="Simples: horas" value={workshop.paint.simple.hours} step="0.1" onChange={(value) => patchTier("simple", { hours: value })} />
-                <NumField label="Média: tinta (R$)" value={workshop.paint.medium.inkBrl} onChange={(value) => patchTier("medium", { inkBrl: value })} />
-                <NumField label="Média: horas" value={workshop.paint.medium.hours} step="0.1" onChange={(value) => patchTier("medium", { hours: value })} />
-                <NumField label="Complexa: tinta (R$)" value={workshop.paint.complex.inkBrl} onChange={(value) => patchTier("complex", { inkBrl: value })} />
-                <NumField label="Complexa: horas" value={workshop.paint.complex.hours} step="0.1" onChange={(value) => patchTier("complex", { hours: value })} />
+              <div className="grid grid-cols-2 items-end gap-x-2.5 gap-y-3">
                 <NumField
-                  label="Sua hora pintando (R$)"
-                  value={workshop.paintHourBrl}
-                  onChange={(value) => patchWorkshop({ paintHourBrl: value })}
-                />
-                <NumField label="Primer (R$)" value={workshop.primerBrl} onChange={(value) => patchWorkshop({ primerBrl: value })} />
-                <NumField
-                  label="Peças por frasco de primer"
-                  value={workshop.primerPieces}
-                  step="1"
-                  onChange={(value) => patchWorkshop({ primerPieces: value })}
-                />
-                <NumField label="Verniz (R$)" value={workshop.varnishBrl} onChange={(value) => patchWorkshop({ varnishBrl: value })} />
-                <NumField
-                  label="Peças por frasco de verniz"
-                  value={workshop.varnishPieces}
-                  step="1"
-                  onChange={(value) => patchWorkshop({ varnishPieces: value })}
-                />
-              </div>
-
-              <p className="mb-1.5 mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
-                Taxas para receber o mesmo líquido
-              </p>
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-                <NumField
-                  label="Link Mercado Pago %"
-                  value={workshop.channels.mercadoPago.percent}
+                  label="Taxa %"
+                  value={workshop.mercadoPago.percent}
                   step="0.1"
-                  onChange={(value) => patchChannel("mercadoPago", { percent: value })}
+                  onChange={(value) => patchMercadoPago({ percent: value })}
                 />
                 <NumField
-                  label="Mercado Pago R$ fixo"
-                  value={workshop.channels.mercadoPago.fixedBrl}
-                  onChange={(value) => patchChannel("mercadoPago", { fixedBrl: value })}
-                />
-                <NumField
-                  label="Shopee %"
-                  value={workshop.channels.shopee.percent}
-                  step="0.1"
-                  onChange={(value) => patchChannel("shopee", { percent: value })}
-                />
-                <NumField
-                  label="Shopee R$ fixo"
-                  value={workshop.channels.shopee.fixedBrl}
-                  onChange={(value) => patchChannel("shopee", { fixedBrl: value })}
-                />
-                <NumField
-                  label="Mercado Livre %"
-                  value={workshop.channels.mercadoLivre.percent}
-                  step="0.1"
-                  onChange={(value) => patchChannel("mercadoLivre", { percent: value })}
-                />
-                <NumField
-                  label="Mercado Livre R$ fixo"
-                  value={workshop.channels.mercadoLivre.fixedBrl}
-                  onChange={(value) => patchChannel("mercadoLivre", { fixedBrl: value })}
+                  label="Taxa fixa (R$)"
+                  value={workshop.mercadoPago.fixedBrl}
+                  onChange={(value) => patchMercadoPago({ fixedBrl: value })}
                 />
               </div>
 
@@ -343,14 +254,12 @@ export function CalculatorPage() {
               <p className="mt-2 inline-block rounded-full bg-olive-soft px-3 py-1 text-[13px] font-semibold text-[#3f5136]">
                 Lucro {formatBRL(price.profit)} · custo {formatBRL(price.totalCost)}
               </p>
-              <div className="mt-3.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <ChannelChip label="Link Mercado Pago" value={price.mercadoPago} />
-                <ChannelChip label="Shopee" value={price.shopee} />
-                <ChannelChip label="Mercado Livre" value={price.mercadoLivre} />
+              <div className="mt-3.5">
+                <ChannelChip label="Link Mercado Pago / cartão" value={price.mercadoPago} />
               </div>
               <p className="mt-2 text-[13px] text-muted">
-                Nos marketplaces o preço já inclui a taxa, para você receber o mesmo valor da venda direta. Com taxa
-                zero, o valor fica igual ao da venda direta. Confirme as taxas atuais em cada plataforma.
+                No link do Mercado Pago o preço já inclui a taxa, para você receber o mesmo valor da venda direta.
+                Com taxa zero, o valor fica igual. Confirme a taxa atual.
               </p>
               <div className="mt-3.5 flex flex-wrap gap-2">
                 <button type="button" onClick={copyPrice} className="admin-btn admin-btn-primary">
@@ -406,7 +315,7 @@ function NumField({
   step?: string;
 }) {
   return (
-    <label className="block text-xs font-medium text-muted">
+    <label className="flex flex-col justify-end text-xs font-medium leading-4 text-muted">
       {label}
       <input
         type="number"

@@ -16,8 +16,6 @@ export const DEFAULT_MERCADO_PAGO_PERCENT = 4;
 
 export type PrintProcess = "fdm" | "resin";
 
-export type PaintLevel = "none" | "simple" | "medium" | "complex";
-
 export type PieceInput = {
   name: string;
   process: PrintProcess;
@@ -25,12 +23,6 @@ export type PieceInput = {
   grams: number;
   quantity: number;
   markup: number;
-  paint: PaintLevel;
-};
-
-export type PaintTier = {
-  inkBrl: number;
-  hours: number;
 };
 
 export type ChannelFee = {
@@ -55,21 +47,7 @@ export type WorkshopConfig = {
   packagingBrl: number;
   freightPaidBrl: number;
   alcoholPerBedBrl: number;
-  paint: {
-    simple: PaintTier;
-    medium: PaintTier;
-    complex: PaintTier;
-  };
-  paintHourBrl: number;
-  primerBrl: number;
-  primerPieces: number;
-  varnishBrl: number;
-  varnishPieces: number;
-  channels: {
-    mercadoPago: ChannelFee;
-    shopee: ChannelFee;
-    mercadoLivre: ChannelFee;
-  };
+  mercadoPago: ChannelFee;
 };
 
 export type MoneyLine = {
@@ -86,7 +64,6 @@ export type PriceBreakdown = {
   fixedShare: number;
   indirect: number;
   failures: number;
-  paint: number;
   unitCost: number;
   quantity: number;
   markup: number;
@@ -94,8 +71,6 @@ export type PriceBreakdown = {
   price: number;
   profit: number;
   mercadoPago: number | null;
-  shopee: number | null;
-  mercadoLivre: number | null;
   lines: MoneyLine[];
   needsRevenue: boolean;
   needsLife: boolean;
@@ -106,13 +81,6 @@ type StorageLike = {
   setItem(key: string, value: string): void;
 };
 
-const PAINT_LABEL: Record<PaintLevel, string> = {
-  none: "Pintura (sem)",
-  simple: "Pintura (simples)",
-  medium: "Pintura (média)",
-  complex: "Pintura (complexa)",
-};
-
 export function defaultPiece(): PieceInput {
   return {
     name: "",
@@ -121,7 +89,6 @@ export function defaultPiece(): PieceInput {
     grams: 0,
     quantity: 1,
     markup: 3,
-    paint: "none",
   };
 }
 
@@ -143,21 +110,7 @@ export function defaultWorkshop(): WorkshopConfig {
     packagingBrl: 0,
     freightPaidBrl: 0,
     alcoholPerBedBrl: 0,
-    paint: {
-      simple: { inkBrl: 0, hours: 0 },
-      medium: { inkBrl: 0, hours: 0 },
-      complex: { inkBrl: 0, hours: 0 },
-    },
-    paintHourBrl: 0,
-    primerBrl: 0,
-    primerPieces: 0,
-    varnishBrl: 0,
-    varnishPieces: 0,
-    channels: {
-      mercadoPago: { percent: DEFAULT_MERCADO_PAGO_PERCENT, fixedBrl: 0 },
-      shopee: { percent: 0, fixedBrl: 0 },
-      mercadoLivre: { percent: 0, fixedBrl: 0 },
-    },
+    mercadoPago: { percent: DEFAULT_MERCADO_PAGO_PERCENT, fixedBrl: 0 },
   };
 }
 
@@ -186,8 +139,7 @@ export function pricePrint(piece: PieceInput, workshop: WorkshopConfig): PriceBr
   const indirect = direct * fixedShare;
   const failurePercent = nonNeg(workshop.failurePercent);
   const failures = (direct + indirect) * (failurePercent / 100);
-  const paint = paintCost(piece.paint, workshop);
-  const unitCost = direct + indirect + failures + paint;
+  const unitCost = direct + indirect + failures;
   const totalCost = unitCost * quantity;
   const price = totalCost * markup;
   const profit = price - totalCost;
@@ -207,16 +159,13 @@ export function pricePrint(piece: PieceInput, workshop: WorkshopConfig): PriceBr
     fixedShare,
     indirect,
     failures,
-    paint,
     unitCost,
     quantity,
     markup,
     totalCost,
     price,
     profit,
-    mercadoPago: shelfPriceForNet(price, workshop.channels.mercadoPago, quantity),
-    shopee: shelfPriceForNet(price, workshop.channels.shopee, quantity),
-    mercadoLivre: shelfPriceForNet(price, workshop.channels.mercadoLivre, quantity),
+    mercadoPago: shelfPriceForNet(price, workshop.mercadoPago, quantity),
     needsRevenue: monthlyFixed > 0 && revenue <= 0,
     needsLife: nonNeg(workshop.printerPaid) > 0 && workshop.printerLifeMonths <= 0,
     lines: [
@@ -234,7 +183,6 @@ export function pricePrint(piece: PieceInput, workshop: WorkshopConfig): PriceBr
         amount: indirect,
       },
       { label: `Reserva para falhas (${failureLabel}%)`, amount: failures },
-      { label: PAINT_LABEL[piece.paint], amount: paint },
     ],
   };
 }
@@ -256,8 +204,6 @@ export function saveWorkshop(config: WorkshopConfig, storage: StorageLike): void
 export function parseWorkshop(value: unknown): WorkshopConfig {
   const base = defaultWorkshop();
   if (!isRecord(value)) return base;
-  const paint = isRecord(value.paint) ? value.paint : {};
-  const channels = isRecord(value.channels) ? value.channels : {};
   return {
     rent: num(value.rent, base.rent),
     software: num(value.software, base.software),
@@ -275,21 +221,7 @@ export function parseWorkshop(value: unknown): WorkshopConfig {
     packagingBrl: num(value.packagingBrl, base.packagingBrl),
     freightPaidBrl: num(value.freightPaidBrl, base.freightPaidBrl),
     alcoholPerBedBrl: num(value.alcoholPerBedBrl, base.alcoholPerBedBrl),
-    paint: {
-      simple: readTier(paint.simple, base.paint.simple),
-      medium: readTier(paint.medium, base.paint.medium),
-      complex: readTier(paint.complex, base.paint.complex),
-    },
-    paintHourBrl: num(value.paintHourBrl, base.paintHourBrl),
-    primerBrl: num(value.primerBrl, base.primerBrl),
-    primerPieces: num(value.primerPieces, base.primerPieces),
-    varnishBrl: num(value.varnishBrl, base.varnishBrl),
-    varnishPieces: num(value.varnishPieces, base.varnishPieces),
-    channels: {
-      mercadoPago: readFee(channels.mercadoPago, base.channels.mercadoPago),
-      shopee: readFee(channels.shopee, base.channels.shopee),
-      mercadoLivre: readFee(channels.mercadoLivre, base.channels.mercadoLivre),
-    },
+    mercadoPago: readMercadoPago(value, base.mercadoPago),
   };
 }
 
@@ -308,22 +240,6 @@ function monthlyOverhead(workshop: WorkshopConfig): number {
 function amortization(paid: number, lifeMonths: number): number {
   if (lifeMonths <= 0) return 0;
   return nonNeg(paid) / lifeMonths;
-}
-
-function paintCost(level: PaintLevel, workshop: WorkshopConfig): number {
-  if (level === "none") return 0;
-  const tier = workshop.paint[level];
-  return (
-    nonNeg(tier.inkBrl) +
-    perPiece(workshop.primerBrl, workshop.primerPieces) +
-    perPiece(workshop.varnishBrl, workshop.varnishPieces) +
-    nonNeg(tier.hours) * nonNeg(workshop.paintHourBrl)
-  );
-}
-
-function perPiece(bottleBrl: number, pieces: number): number {
-  if (pieces <= 0) return 0;
-  return nonNeg(bottleBrl) / pieces;
 }
 
 function shelfPriceForNet(net: number, fee: ChannelFee, quantity: number): number | null {
@@ -354,18 +270,16 @@ function num(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-function readTier(value: unknown, fallback: PaintTier): PaintTier {
-  if (!isRecord(value)) return fallback;
-  return {
-    inkBrl: num(value.inkBrl, fallback.inkBrl),
-    hours: num(value.hours, fallback.hours),
-  };
-}
-
 function readFee(value: unknown, fallback: ChannelFee): ChannelFee {
   if (!isRecord(value)) return fallback;
   return {
     percent: num(value.percent, fallback.percent),
     fixedBrl: num(value.fixedBrl, fallback.fixedBrl),
   };
+}
+
+function readMercadoPago(value: Record<string, unknown>, fallback: ChannelFee): ChannelFee {
+  if (isRecord(value.mercadoPago)) return readFee(value.mercadoPago, fallback);
+  if (!isRecord(value.channels)) return fallback;
+  return readFee(value.channels.mercadoPago, fallback);
 }

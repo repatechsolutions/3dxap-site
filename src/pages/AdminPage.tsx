@@ -271,6 +271,9 @@ export function AdminPage() {
           >
             Impressão
           </button>
+          <Link to="/admin/calculadora" className="admin-tab">
+            Calculadora
+          </Link>
         </div>
 
         {tab === "quotes" ? (

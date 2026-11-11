@@ -1,20 +1,18 @@
-/**
- * Precificação de impressão 3D (vídeo "Precifique da maneira correta suas
- * impressões 3D", RM Maker3D). Funções puras: a página só lê e grava.
- *
- * Potência padrão: 95 W, média de impressão em PLA da Bambu Lab A1.
+export const CONFIG_KEY = "3dxap-calc-config-v1";
+
+/** Média de impressão em PLA da Bambu Lab A1: 95 W.
  * Fonte: Bambu Lab Wiki, "Printer and AMS power parameters", tabela A1 / A1 mini,
  * linha "PLA Average Power" (https://wiki.bambulab.com/en/general/power-consumption).
  * A ficha do produto (https://bambulab.com/en/a1/tech-specs) publica só o pico,
- * 1300 W a 220 V e 350 W a 110 V, que é o aquecimento da mesa, não a média impressa.
- *
- * A energia padrão (R$ 0,96/kWh) é a média da conta de luz. O aluguel fica 0:
- * o trabalho é em casa, e a conta da casa não entra no rateio.
+ * 1300 W a 220 V e 350 W a 110 V.
  */
-
-export const CONFIG_KEY = "3dxap-calc-config-v1";
-
 export const BAMBU_A1_PLA_AVERAGE_WATTS = 95;
+
+export const DEFAULT_ENERGY_BRL_PER_KWH = 0.96;
+
+export const DEFAULT_PRINTER_LIFE_MONTHS = 36;
+
+export const DEFAULT_MERCADO_PAGO_PERCENT = 4;
 
 export type PrintProcess = "fdm" | "resin";
 
@@ -138,10 +136,9 @@ export function defaultWorkshop(): WorkshopConfig {
     monthlyRevenue: 0,
     failurePercent: 10,
     printerPaid: 0,
-    // 36 meses é o prazo do vídeo para impressora nova. Com valor pago 0, a parcela é zero.
-    printerLifeMonths: 36,
+    printerLifeMonths: DEFAULT_PRINTER_LIFE_MONTHS,
     watts: BAMBU_A1_PLA_AVERAGE_WATTS,
-    energyBrlPerKwh: 0.96,
+    energyBrlPerKwh: DEFAULT_ENERGY_BRL_PER_KWH,
     materialBrlPerKg: 0,
     packagingBrl: 0,
     freightPaidBrl: 0,
@@ -157,8 +154,7 @@ export function defaultWorkshop(): WorkshopConfig {
     varnishBrl: 0,
     varnishPieces: 0,
     channels: {
-      // O vídeo cita cerca de 4% no link do Mercado Pago. Shopee e Mercado Livre começam em zero.
-      mercadoPago: { percent: 4, fixedBrl: 0 },
+      mercadoPago: { percent: DEFAULT_MERCADO_PAGO_PERCENT, fixedBrl: 0 },
       shopee: { percent: 0, fixedBrl: 0 },
       mercadoLivre: { percent: 0, fixedBrl: 0 },
     },
@@ -218,9 +214,9 @@ export function pricePrint(piece: PieceInput, workshop: WorkshopConfig): PriceBr
     totalCost,
     price,
     profit,
-    mercadoPago: listedPrice(price, workshop.channels.mercadoPago, quantity),
-    shopee: listedPrice(price, workshop.channels.shopee, quantity),
-    mercadoLivre: listedPrice(price, workshop.channels.mercadoLivre, quantity),
+    mercadoPago: shelfPriceForNet(price, workshop.channels.mercadoPago, quantity),
+    shopee: shelfPriceForNet(price, workshop.channels.shopee, quantity),
+    mercadoLivre: shelfPriceForNet(price, workshop.channels.mercadoLivre, quantity),
     needsRevenue: monthlyFixed > 0 && revenue <= 0,
     needsLife: nonNeg(workshop.printerPaid) > 0 && workshop.printerLifeMonths <= 0,
     lines: [
@@ -310,7 +306,6 @@ function monthlyOverhead(workshop: WorkshopConfig): number {
 }
 
 function amortization(paid: number, lifeMonths: number): number {
-  // Vida 0 não pode virar "divide por 1": isso jogaria a impressora inteira num mês.
   if (lifeMonths <= 0) return 0;
   return nonNeg(paid) / lifeMonths;
 }
@@ -331,12 +326,9 @@ function perPiece(bottleBrl: number, pieces: number): number {
   return nonNeg(bottleBrl) / pieces;
 }
 
-function listedPrice(net: number, fee: ChannelFee, quantity: number): number | null {
+function shelfPriceForNet(net: number, fee: ChannelFee, quantity: number): number | null {
   const percent = nonNeg(fee.percent);
   if (percent >= 100) return null;
-  // (líquido + fixo × quantidade) / (1 − taxa). A taxa fixa fica dentro da divisão
-  // para o valor recebido continuar igual à venda direta. Fora dela, a Shopee do
-  // exemplo (R$ 39,80 e taxa 20% + R$ 4) daria R$ 53,75 em vez de R$ 54,76.
   const fixed = nonNeg(fee.fixedBrl) * quantity;
   return (net + fixed) / (1 - percent / 100);
 }

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -214,35 +214,47 @@ export function EstoquePage({
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
+        <Card size="sm">
+          <CardHeader>
             <CardDescription>Itens cadastrados</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">{items.length}</CardTitle>
+            <CardTitle className="text-2xl font-semibold tabular-nums">{items.length}</CardTitle>
+            <CardAction>
+              <Badge variant="outline">{countLabel(items.length, "item", "itens")}</Badge>
+            </CardAction>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">{countLabel(units.length, "unidade", "unidades")} · {countLabel(packs.length, "pacote", "pacotes")}</CardContent>
+          <CardFooter className="text-sm text-muted-foreground">{countLabel(units.length, "unidade", "unidades")} · {countLabel(packs.length, "pacote", "pacotes")}</CardFooter>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card size="sm">
+          <CardHeader>
             <CardDescription>Saldo em unidades</CardDescription>
-            <CardTitle className="text-3xl tabular-nums" data-testid="kpi-units">{unitBalance}</CardTitle>
+            <CardTitle className="text-2xl font-semibold tabular-nums" data-testid="kpi-units">{unitBalance}</CardTitle>
+            <CardAction>
+              <Badge variant="outline">ok</Badge>
+            </CardAction>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">e {countLabel(packBalance, "pacote pronto", "pacotes prontos")}</CardContent>
+          <CardFooter className="text-sm text-muted-foreground">e {countLabel(packBalance, "pacote pronto", "pacotes prontos")}</CardFooter>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card size="sm">
+          <CardHeader>
             <CardDescription>Estoque baixo</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">{low.length}</CardTitle>
+            <CardTitle className="text-2xl font-semibold tabular-nums">{low.length}</CardTitle>
+            <CardAction>
+              <Badge variant={low.length > 0 ? "destructive" : "outline"}>{low.length > 0 ? "precisa repor" : "ok"}</Badge>
+            </CardAction>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
+          <CardFooter className="text-sm text-muted-foreground">
             {low.length === 0 ? "Nenhum item no limite" : low.map((item) => item.name).slice(0, 2).join(" e ")}
-          </CardContent>
+          </CardFooter>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card size="sm">
+          <CardHeader>
             <CardDescription>Mais vendido no mês</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">{top?.units ?? 0}</CardTitle>
+            <CardTitle className="text-2xl font-semibold tabular-nums">{top?.units ?? 0}</CardTitle>
+            <CardAction>
+              <Badge variant="outline">mês</Badge>
+            </CardAction>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">{top?.name ?? "Sem saídas neste mês"}</CardContent>
+          <CardFooter className="text-sm text-muted-foreground">{top?.name ?? "Sem saídas neste mês"}</CardFooter>
         </Card>
       </div>
 
